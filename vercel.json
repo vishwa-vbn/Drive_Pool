@@ -1,0 +1,11 @@
+{
+    "version": 2,
+    "name": "portfolio-server",
+    "builds": [
+      { "src": "server.js", "use": "@vercel/node" }
+    ],
+    "routes": [
+      { "src": "/(.*)", "dest": "/server.js" },
+      { "src": "/api/.*", "dest": "/server.js" }
+    ]
+  }
