@@ -3,11 +3,7 @@ require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const multer = require('multer');
 const { google } = require('googleapis');
-const path = require('path');
-const fs = require('fs');
 const cors = require('cors');
-const axios = require('axios'); // Note: axios is not used in this snippet
-const { Console } = require('console');
 
 const app = express();
 app.use(cors());
@@ -38,7 +34,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
     const media = {
       mimeType: req.file.mimetype,
-      body: fs.createReadStream(req.file.path), // Use req.file.buffer directly
+      body: req.file.buffer, // Use buffer directly
     };
 
     const response = await drive.files.create({
@@ -63,7 +59,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
     res.json({ url: fileUrl });
   } catch (err) {
     console.error('Error uploading file:', err);
-    res.status(500).json({ error: 'Error uploading file' });
+    res.status(500).json({ error: 'Error uploading file', details: err.message });
   }
 });
 
