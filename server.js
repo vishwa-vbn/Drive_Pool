@@ -5,12 +5,12 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
-const cors = require('cors'); 
-const axios = require('axios'); 
+const cors = require('cors');
+const axios = require('axios'); // Note: axios is not used in this snippet
 const { Console } = require('console');
 
 const app = express();
-app.use(cors()); 
+app.use(cors());
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -27,7 +27,9 @@ const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
 app.post('/upload', upload.single('image'), async (req, res) => {
   try {
-    const filePath = path.join(__dirname, req.file.path);
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
     const fileMetadata = {
       name: req.file.originalname,
@@ -36,7 +38,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
     const media = {
       mimeType: req.file.mimetype,
-      body: fs.createReadStream(filePath),
+      body: fs.createReadStream(req.file.path), // Use req.file.buffer directly
     };
 
     const response = await drive.files.create({
@@ -45,8 +47,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
       fields: 'id',
     });
 
-
-     console.log("response",response)
+    console.log("response", response.data);
     const fileId = response.data.id;
 
     await drive.permissions.create({
@@ -59,16 +60,11 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
     const fileUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
 
-    fs.unlinkSync(filePath);
-
     res.json({ url: fileUrl });
   } catch (err) {
-    console.error(err);
+    console.error('Error uploading file:', err);
     res.status(500).json({ error: 'Error uploading file' });
   }
 });
-
-
-
 
 app.listen(5000, () => console.log('Server started on port 5000'));
