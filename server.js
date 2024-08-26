@@ -3,15 +3,14 @@ require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const multer = require('multer');
 const { google } = require('googleapis');
-const path = require('path');
-const fs = require('fs');
-const cors = require('cors'); 
-const axios = require('axios'); 
-const { Console } = require('console');
+const cors = require('cors');
+const stream = require('stream');
 
 const app = express();
-app.use(cors()); 
-const upload = multer({ dest: 'uploads/' });
+app.use(cors());
+
+// Configure multer to use memory storage instead of file system
+const upload = multer({ storage: multer.memoryStorage() });
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
@@ -25,7 +24,9 @@ const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
 app.post('/upload', upload.single('image'), async (req, res) => {
   try {
-    const filePath = path.join(__dirname, req.file.path);
+    // Create a buffer stream from the file
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(req.file.buffer);
 
     const fileMetadata = {
       name: req.file.originalname,
@@ -34,7 +35,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
     const media = {
       mimeType: req.file.mimetype,
-      body: fs.createReadStream(filePath),
+      body: bufferStream,
     };
 
     const response = await drive.files.create({
@@ -43,8 +44,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
       fields: 'id',
     });
 
-
-     console.log("response",response)
+    console.log('response', response);
     const fileId = response.data.id;
 
     await drive.permissions.create({
@@ -57,16 +57,11 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
     const fileUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
 
-    fs.unlinkSync(filePath);
-
     res.json({ url: fileUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error uploading file' });
   }
 });
-
-
-
 
 app.listen(5000, () => console.log('Server started on port 5000'));
